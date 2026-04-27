@@ -26,6 +26,7 @@ const state = {
 };
 
 const elements = {
+  leaderboard: document.querySelector(".leaderboard"),
   yearFilter: document.querySelector("#yearFilter"),
   quarterFilter: document.querySelector("#quarterFilter"),
   categoryFilter: document.querySelector("#categoryFilter"),
@@ -280,31 +281,38 @@ function fillSelect(select, options) {
     .join("");
 }
 
-function getFilteredEntries() {
-  const query = state.search.trim().toLowerCase();
+function getFilteredEntries({ includeSearch = true } = {}) {
+  const query = includeSearch ? state.search.trim().toLowerCase() : "";
   return leaderboardData
     .filter((entry) => state.year === "all" || String(entry.year) === state.year)
     .filter((entry) => state.quarter === "all" || entry.quarter === state.quarter)
     .filter(
       (entry) => state.category === "all" || entry.activity.some((item) => item.id === state.category),
     )
-    .filter((entry) => {
-      if (!query) return true;
-      return `${entry.name} ${entry.role}`.toLowerCase().includes(query);
-    })
+    .filter((entry) => matchesNameSearch(entry, query))
     .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name))
     .map((entry, index) => ({ ...entry, rank: index + 1 }));
 }
 
+function matchesNameSearch(entry, query) {
+  if (!query) return true;
+  return entry.name.toLowerCase().includes(query);
+}
+
 function render() {
-  const entries = getFilteredEntries();
-  const podiumEntries = getPodiumEntries(entries);
+  const query = state.search.trim().toLowerCase();
+  const entriesBeforeSearch = getFilteredEntries({ includeSearch: false });
+  const entries = query
+    ? entriesBeforeSearch.filter((entry) => matchesNameSearch(entry, query))
+    : entriesBeforeSearch;
+  const podiumEntries = getPodiumEntries(entriesBeforeSearch, query);
   const hasEntries = entries.length > 0;
   const hasPodiumEntries = podiumEntries.length > 0;
 
   elements.emptyState.hidden = hasEntries;
   elements.podium.hidden = !hasPodiumEntries;
   elements.list.hidden = !hasEntries;
+  elements.leaderboard.classList.toggle("noPodium", !hasPodiumEntries);
 
   if (!hasEntries) {
     elements.list.innerHTML = "";
@@ -321,8 +329,14 @@ function render() {
   }
 }
 
-function getPodiumEntries(entries) {
-  return entries.slice(0, 3);
+function getPodiumEntries(entriesBeforeSearch, query) {
+  const leadersBeforeSearch = entriesBeforeSearch.slice(0, 3);
+
+  if (query) {
+    return leadersBeforeSearch.filter((entry) => matchesNameSearch(entry, query));
+  }
+
+  return leadersBeforeSearch;
 }
 
 function renderPodium(topEntries) {
