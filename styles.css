@@ -1209,6 +1209,14 @@ body {
   display: none;
 }
 
+.leaderboard.noPodium .filterBar {
+  margin-bottom: 20px;
+}
+
+.leaderboard.noPodium .list {
+  padding-top: 0;
+}
+
 .podiumCount1 {
   grid-template-columns: minmax(260px, 360px);
   justify-content: center;
