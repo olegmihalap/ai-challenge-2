@@ -812,15 +812,25 @@ body {
   background: #fff;
 }
 
+.photoAvatar {
+  background: #fff;
+}
+
 .placeholderAvatar::before {
   content: none;
 }
 
-.placeholderAvatar img {
+.photoAvatar::before {
+  content: none;
+}
+
+.placeholderAvatar img,
+.photoAvatar img {
   display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: center;
   border-radius: 50%;
 }
 
@@ -1284,8 +1294,22 @@ body {
   background: #fff;
 }
 
-.podiumAvatar.placeholderAvatar::before {
+.podiumAvatar.photoAvatar {
+  background: #fff;
+}
+
+.podiumAvatar.placeholderAvatar::before,
+.podiumAvatar.photoAvatar::before {
   content: none;
+}
+
+.podiumAvatar img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  border-radius: 50%;
 }
 
 .podiumRank1 .podiumAvatar {

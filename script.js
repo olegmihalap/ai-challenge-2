@@ -59,11 +59,21 @@ function applyLeaderboardData(data) {
   categories = data.categories;
   years = data.years;
   quarters = data.quarters;
-  leaderboardData = data.users;
+  leaderboardData = data.users.map((entry, index) => ({
+    ...entry,
+    hasPhoto: true,
+    photoUrl: entry.photoUrl || getUserPhotoUrl(index),
+  }));
   fullListLeaders = [...leaderboardData]
     .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name))
     .slice(0, 3)
     .map((entry, index) => ({ ...entry, rank: index + 1 }));
+}
+
+function getUserPhotoUrl(index) {
+  const folder = index % 2 === 0 ? "men" : "women";
+  const photoId = (index % 99) + 1;
+  return `https://randomuser.me/api/portraits/${folder}/${photoId}.jpg`;
 }
 
 function createFallbackLeaderboardData() {
@@ -411,6 +421,14 @@ function avatarStyle(entry) {
 }
 
 function renderAvatar(entry, className) {
+  if (entry.photoUrl) {
+    return `
+      <div class="${className} photoAvatar" aria-hidden="true">
+        <img src="${entry.photoUrl}" alt="" loading="lazy" onerror="this.onerror=null;this.src='assets/avatar-placeholder.svg';" />
+      </div>
+    `;
+  }
+
   if (!entry.hasPhoto) {
     return `
       <div class="${className} placeholderAvatar" aria-hidden="true">
