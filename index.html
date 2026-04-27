@@ -33,12 +33,29 @@
           </div>
 
           <label class="search">
-            <span class="searchIcon" aria-hidden="true"></span>
+            <span class="searchIcon" aria-hidden="true">
+              <svg viewBox="0 0 20 20" focusable="false">
+                <path d="M8.5 3a5.5 5.5 0 0 1 4.38 8.83l3.15 3.14a.75.75 0 1 1-1.06 1.06l-3.14-3.15A5.5 5.5 0 1 1 8.5 3Zm0 1.5a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z" />
+              </svg>
+            </span>
             <input id="searchInput" type="search" placeholder="Search employee..." autocomplete="off" />
+            <button id="clearSearch" class="clearSearch" type="button" aria-label="Clear search" hidden>
+              <svg viewBox="0 0 20 20" focusable="false" aria-hidden="true">
+                <path d="M5.72 4.66a.75.75 0 0 0-1.06 1.06L8.94 10l-4.28 4.28a.75.75 0 1 0 1.06 1.06L10 11.06l4.28 4.28a.75.75 0 0 0 1.06-1.06L11.06 10l4.28-4.28a.75.75 0 1 0-1.06-1.06L10 8.94 5.72 4.66Z" />
+              </svg>
+            </button>
           </label>
         </div>
 
-        <div id="emptyState" class="emptyState" hidden>No performers match the selected filters.</div>
+        <div id="podium" class="podium" aria-label="Top three performers"></div>
+        <div id="emptyState" class="emptyState" hidden>
+          <span class="emptyIcon" aria-hidden="true">
+            <svg viewBox="0 0 20 20" focusable="false">
+              <path d="M10 2.25a7.75 7.75 0 1 0 0 15.5 7.75 7.75 0 0 0 0-15.5Zm0 1.5a6.25 6.25 0 1 1 0 12.5 6.25 6.25 0 0 1 0-12.5Zm0 5.5a.75.75 0 0 1 .75.75v3.25a.75.75 0 0 1-1.5 0V10a.75.75 0 0 1 .75-.75Zm0-2.75a.85.85 0 1 1 0 1.7.85.85 0 0 1 0-1.7Z" />
+            </svg>
+          </span>
+          No activities found matching the current filters.
+        </div>
         <div id="leaderboardList" class="list"></div>
       </section>
     </main>
