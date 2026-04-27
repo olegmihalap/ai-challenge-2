@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Leaderboard</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="pageShell">
+      <section class="leaderboard" aria-labelledby="leaderboardTitle">
+        <header class="header">
+          <div class="headerContent">
+            <h1 id="leaderboardTitle">Leaderboard</h1>
+            <p>Top performers based on contributions and activity</p>
+          </div>
+        </header>
+
+        <div class="filterBar">
+          <div class="filters" aria-label="Leaderboard filters">
+            <label class="dropdownContainer">
+              <span class="srOnly">Year</span>
+              <select id="yearFilter" class="dropdown"></select>
+            </label>
+            <label class="dropdownContainer">
+              <span class="srOnly">Quarter</span>
+              <select id="quarterFilter" class="dropdown"></select>
+            </label>
+            <label class="dropdownContainer wide">
+              <span class="srOnly">Category</span>
+              <select id="categoryFilter" class="dropdown"></select>
+            </label>
+          </div>
+
+          <label class="search">
+            <span class="searchIcon" aria-hidden="true">S</span>
+            <input id="searchInput" type="search" placeholder="Search employee..." autocomplete="off" />
+          </label>
+        </div>
+
+        <div id="podium" class="podium" aria-label="Top three performers"></div>
+        <div id="emptyState" class="emptyState" hidden>No performers match the selected filters.</div>
+        <div id="leaderboardList" class="list"></div>
+      </section>
+    </main>
+
+    <script src="script.js"></script>
+  </body>
+</html>
