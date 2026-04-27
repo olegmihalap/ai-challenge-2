@@ -1,7 +1,7 @@
 const categories = [
-  { id: "education", label: "Education", icon: "E", weight: 16 },
-  { id: "speaking", label: "Public Speaking", icon: "P", weight: 8 },
-  { id: "partnership", label: "University Partnership", icon: "U", weight: 6 },
+  { id: "education", label: "Education", icon: "cap", weight: 16 },
+  { id: "speaking", label: "Public Speaking", icon: "screen", weight: 8 },
+  { id: "partnership", label: "University Partnership", icon: "link", weight: 6 },
 ];
 
 const years = [2026, 2025, 2024];
@@ -107,6 +107,30 @@ const gradients = [
   ["#0369a1", "#38bdf8"],
 ];
 
+const activityTemplates = {
+  education: [
+    "Mentoring session for cohort member",
+    "Workshop on practical testing methods",
+    "Knowledge base article review",
+    "Internal lab lecture",
+    "Study group facilitation",
+  ],
+  speaking: [
+    "Conference-style technical talk",
+    "Community demo session",
+    "Lightning talk on delivery practices",
+    "Panel discussion preparation",
+    "Recorded presentation review",
+  ],
+  partnership: [
+    "Campus partner consultation",
+    "University program planning",
+    "Student project review",
+    "Partner onboarding session",
+    "Academic meetup coordination",
+  ],
+};
+
 const scoreShape = [
   536, 328, 320, 320, 304, 296, 288, 288, 288, 256, 256, 224, 224, 224, 224,
   208, 208, 200, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 176,
@@ -157,6 +181,7 @@ const leaderboardData = [...scoreShape, ...generatedTail].map((score, index) => 
       ...(secondaryCount ? [{ id: secondary.id, count: secondaryCount }] : []),
       ...(tertiaryCount ? [{ id: tertiary.id, count: tertiaryCount }] : []),
     ],
+    recentActivity: buildRecentActivity(index, primary.id, score),
   };
 });
 
@@ -173,7 +198,6 @@ const elements = {
   quarterFilter: document.querySelector("#quarterFilter"),
   categoryFilter: document.querySelector("#categoryFilter"),
   searchInput: document.querySelector("#searchInput"),
-  podium: document.querySelector("#podium"),
   list: document.querySelector("#leaderboardList"),
   emptyState: document.querySelector("#emptyState"),
 };
@@ -220,44 +244,14 @@ function render() {
   const hasEntries = entries.length > 0;
 
   elements.emptyState.hidden = hasEntries;
-  elements.podium.hidden = !hasEntries;
   elements.list.hidden = !hasEntries;
 
   if (!hasEntries) {
-    elements.podium.innerHTML = "";
     elements.list.innerHTML = "";
     return;
   }
 
-  renderPodium(entries.slice(0, 3));
   renderList(entries);
-}
-
-function renderPodium(topEntries) {
-  const order = [2, 1, 3];
-  elements.podium.innerHTML = order
-    .map((rank) => topEntries.find((entry) => entry.rank === rank))
-    .filter(Boolean)
-    .map(
-      (entry) => `
-        <article class="podiumColumn podiumRank${entry.rank}">
-          <div class="podiumUser">
-            <div class="podiumAvatarContainer">
-              <div class="podiumAvatar" style="${avatarStyle(entry)}">${entry.initials}</div>
-              <div class="podiumRankBadge">${entry.rank}</div>
-            </div>
-            <h2 class="podiumName">${entry.name}</h2>
-            <p class="podiumRole">${entry.role}</p>
-            <div class="podiumScore"><span class="star">*</span><span>${entry.score}</span></div>
-          </div>
-          <div class="podiumBlock">
-            <div class="podiumBlockTop"></div>
-            <span class="podiumRankNumber">${entry.rank}</span>
-          </div>
-        </article>
-      `,
-    )
-    .join("");
 }
 
 function renderList(entries) {
@@ -272,7 +266,7 @@ function renderRow(entry) {
         <div class="rowMain">
           <div class="rowLeft">
             <span class="rank">${entry.rank}</span>
-            <div class="avatar" style="${avatarStyle(entry)}">${entry.initials}</div>
+            <div class="avatar" style="${avatarStyle(entry)}" aria-hidden="true"></div>
             <div class="info">
               <h2 class="name">${entry.name}</h2>
               <span class="role">${entry.role}</span>
@@ -282,28 +276,24 @@ function renderRow(entry) {
             <div class="categoryStats">${renderCategoryStats(entry.activity)}</div>
             <div class="totalSection">
               <span class="totalLabel">TOTAL</span>
-              <div class="score"><span class="star">*</span><span>${entry.score}</span></div>
+              <div class="score"><span class="star">★</span><span>${entry.score}</span></div>
             </div>
-            <button class="expandButton" type="button" aria-label="${isExpanded ? "Collapse" : "Expand"}" aria-expanded="${isExpanded}" data-entry-id="${entry.id}">v</button>
+            <button class="expandButton" type="button" aria-label="${isExpanded ? "Collapse" : "Expand"}" aria-expanded="${isExpanded}" data-entry-id="${entry.id}">
+              <span aria-hidden="true"></span>
+            </button>
           </div>
         </div>
       </div>
       <div class="details">
-        <div class="detailCard">
-          <span class="detailLabel">Year</span>
-          <span class="detailValue">${entry.year}</span>
-        </div>
-        <div class="detailCard">
-          <span class="detailLabel">Quarter</span>
-          <span class="detailValue">${entry.quarter}</span>
-        </div>
-        <div class="detailCard">
-          <span class="detailLabel">Top Category</span>
-          <span class="detailValue">${getCategory(entry.activity[0].id).label}</span>
-        </div>
-        <div class="detailCard">
-          <span class="detailLabel">Contributions</span>
-          <span class="detailValue">${entry.activity.reduce((sum, item) => sum + item.count, 0)}</span>
+        <h3 class="detailsTitle">Recent Activity</h3>
+        <div class="activityTable" role="table" aria-label="Recent activity for ${entry.name}">
+          <div class="activityHeader" role="row">
+            <span role="columnheader">Activity</span>
+            <span role="columnheader">Category</span>
+            <span role="columnheader">Date</span>
+            <span role="columnheader">Points</span>
+          </div>
+          ${entry.recentActivity.map(renderActivityRow).join("")}
         </div>
       </div>
     </article>
@@ -316,7 +306,7 @@ function renderCategoryStats(activity) {
       const category = getCategory(item.id);
       return `
         <span class="categoryStat" title="${category.label}">
-          <span class="categoryStatIcon" aria-hidden="true">${category.icon}</span>
+          <span class="categoryStatIcon ${category.icon}" aria-hidden="true"></span>
           <span class="categoryStatCount">${item.count}</span>
         </span>
       `;
@@ -330,6 +320,44 @@ function getCategory(id) {
 
 function avatarStyle(entry) {
   return `--avatar-a: ${entry.avatarA}; --avatar-b: ${entry.avatarB};`;
+}
+
+function buildRecentActivity(seed, primaryCategory, score) {
+  const categoryIds = [primaryCategory, categories[(seed + 1) % categories.length].id];
+  const rowCount = seed % 5 === 0 ? 7 : 4 + (seed % 3);
+
+  return Array.from({ length: rowCount }, (_, index) => {
+    const categoryId = categoryIds[index % categoryIds.length];
+    const category = getCategory(categoryId) || categories[0];
+    const templates = activityTemplates[categoryId];
+    const points = Math.max(6, Math.min(64, Math.round(score / (rowCount + index + 2) / 8) * 8));
+    const month = 12 - ((seed + index * 2) % 10);
+    const day = 8 + ((seed * 3 + index * 5) % 20);
+
+    return {
+      activity: `[LAB] ${templates[(seed + index) % templates.length]}`,
+      category: category.label,
+      date: `${String(day).padStart(2, "0")}-${monthName(month)}-2025`,
+      points: `+${points}`,
+    };
+  });
+}
+
+function monthName(month) {
+  return ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][
+    month - 1
+  ];
+}
+
+function renderActivityRow(item) {
+  return `
+    <div class="activityRow" role="row">
+      <span class="activityName" role="cell">${item.activity}</span>
+      <span role="cell"><span class="activityPill">${item.category}</span></span>
+      <span class="activityDate" role="cell">${item.date}</span>
+      <span class="activityPoints" role="cell">${item.points}</span>
+    </div>
+  `;
 }
 
 elements.yearFilter.addEventListener("change", (event) => {
