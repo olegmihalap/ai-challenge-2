@@ -50,6 +50,8 @@
 https://oleg-ai-challenge.lovable.app/
 
 ### Accounts
-Host host@test.com | test1234
-Attendee attendee@test.com | test1234
-Attendee seconduser@test.com | test1234
+| Type    | Email | Password |
+| -------- | ------- | ------- |
+| Host  | host@test.com | test1234 |
+| Attendee | attendee@test.com | test1234 |
+| Attendee | seconduser@test.com | test1234 |

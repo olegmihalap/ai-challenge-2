@@ -8,7 +8,7 @@ I used ChatGPT to generate plan, prompts and phases to use it later in Lovable
 
 Then after all phases finished I walked thourh the app to check how it works and how much it meets task requirements
 
-I spend 50 credits to generate app using chatGPT prompts, and then 50 credits to fix bug, wrong logic and behavior.
+I spend 50 credits to generate app using chatGPT prompts, and then 50 credits to fix bug, wrong logic and behavior and to update functionality
 
 ### Notes
 Lovable birns credits very fast, even for simple tasks.
