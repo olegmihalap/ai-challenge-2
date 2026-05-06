@@ -1,0 +1,4 @@
+project_id = "cdpfzmbwsewydqpvknpc"
+
+[functions.export-rsvps]
+verify_jwt = true
