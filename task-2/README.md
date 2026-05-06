@@ -1,6 +1,4 @@
-## Steps 
- Publish → RSVP → Ticket → Check-in. This should be a usage guide, not a copy of the requirements.
-
+Lovable deployed app opens for me only if I enable VPN
 
 ### Host steps
  1. Click on Sign up button to create a new user or sign in with credentials(host creds)
