@@ -48,6 +48,8 @@ where **start** is the first scheduled segment start (runway start for arrivals,
 
 ## Tools and techniques
 
+- `ChatGPT Pro` to analyze task and generate prompts for Cursor
+- `Cursor` with subscription to generate code for MCP server
 - `@modelcontextprotocol/sdk` with `McpServer` + `StdioServerTransport`
 - `zod` for env + tool argument validation
 - `vitest` for regression scenarios described in the challenge brief
