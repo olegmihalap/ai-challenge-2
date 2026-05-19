@@ -1,5 +1,5 @@
-import type { AirportConfig } from "./config.js";
-import type { FlightRecord, OperationType } from "./domain.js";
+import type { AirportConfig } from "../config.js";
+import type { FlightRecord, OperationType } from "../domain.js";
 import type { UnscheduledEntry } from "./scheduler.js";
 
 export type AirportStatusPayload = {

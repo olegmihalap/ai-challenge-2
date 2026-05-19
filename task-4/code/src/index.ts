@@ -3,9 +3,9 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import * as z from "zod";
 import { loadAirportConfig } from "./config.js";
 import { loadDotenvFiles } from "./loadEnv.js";
-import { analyzeBottleneckChain } from "./bottleneck.js";
-import { buildAirportStatus } from "./status.js";
-import { AirportState } from "./state.js";
+import { analyzeBottleneckChain } from "./tools/bottleneck.js";
+import { buildAirportStatus } from "./tools/status.js";
+import { AirportState } from "./tools/state.js";
 
 function jsonResource(uri: string, text: string) {
   return {
@@ -32,6 +32,33 @@ function toolError(message: string) {
   };
 }
 
+const RunwayRequirementSchema = z.object({
+  minLength: z.number().nonnegative(),
+});
+
+export const MCP_TOOL_NAMES = [
+  "submit_flight",
+  "generate_schedule",
+  "get_airport_status",
+  "cancel_flight",
+  "analyze_bottleneck",
+  "analyze_schedule_bottleneck",
+] as const;
+
+export const MCP_RESOURCE_URIS = [
+  "airport://flight-queue",
+  "airport://runways",
+  "airport://timeline",
+] as const;
+
+/** Static manifest of tool names and resource URIs registered by createMcpServer. */
+export function getMcpRegistrationManifest(): {
+  toolNames: readonly string[];
+  resourceUris: readonly string[];
+} {
+  return { toolNames: MCP_TOOL_NAMES, resourceUris: MCP_RESOURCE_URIS };
+}
+
 export function createMcpServer(state: AirportState): McpServer {
   const server = new McpServer(
     {
@@ -40,7 +67,7 @@ export function createMcpServer(state: AirportState): McpServer {
     },
     {
       instructions:
-        "Airport ATC coordination MCP: submit flights, call generate_schedule to rebuild the plan, read resources for queue/runways/timeline, use analyze_schedule_bottleneck after scheduling.",
+        "Airport ATC coordination MCP: submit flights, call generate_schedule to rebuild the plan, read resources for queue/runways/timeline, use analyze_bottleneck after scheduling.",
     },
   );
 
@@ -48,12 +75,13 @@ export function createMcpServer(state: AirportState): McpServer {
     "submit_flight",
     {
       description:
-        "Submit a new arrival or departure with priority, optional dependency flight IDs (must already exist), and optional minimum runway length in meters.",
+        "Submit a new arrival or departure with priority, optional dependency flight IDs (must already exist), and optional runwayRequirement.minLength (meters).",
       inputSchema: {
         flightNumber: z.string().min(1),
         operationType: z.enum(["arrival", "departure"]),
         priority: z.enum(["high", "medium", "low"]),
         dependencies: z.array(z.string().uuid()).optional(),
+        runwayRequirement: RunwayRequirementSchema.optional(),
         minRunwayLengthM: z.number().nonnegative().optional(),
       },
     },
@@ -64,6 +92,7 @@ export function createMcpServer(state: AirportState): McpServer {
           operationType: args.operationType,
           priority: args.priority,
           dependencies: args.dependencies,
+          runwayRequirement: args.runwayRequirement,
           minRunwayLengthM: args.minRunwayLengthM,
         });
         return toolJson({
@@ -139,19 +168,28 @@ export function createMcpServer(state: AirportState): McpServer {
     },
   );
 
+  const analyzeBottleneckHandler = async () => {
+    if (state.getScheduleStale()) {
+      return toolError("No generated schedule — call generate_schedule first.");
+    }
+    const result = analyzeBottleneckChain(state.listFlights(), state.getAssignments());
+    return toolJson(result);
+  };
+
+  const bottleneckToolMeta = {
+    description:
+      "Find the longest scheduled dependency chain by wall-clock span on the current generated schedule.",
+  };
+
+  server.registerTool("analyze_bottleneck", bottleneckToolMeta, analyzeBottleneckHandler);
+
   server.registerTool(
     "analyze_schedule_bottleneck",
     {
-      description:
-        "Find the longest scheduled dependency chain by wall-clock span on the current generated schedule.",
+      ...bottleneckToolMeta,
+      description: `${bottleneckToolMeta.description} (deprecated alias for analyze_bottleneck)`,
     },
-    async () => {
-      if (state.getScheduleStale()) {
-        return toolError("No generated schedule — call generate_schedule first.");
-      }
-      const result = analyzeBottleneckChain(state.listFlights(), state.getAssignments());
-      return toolJson(result);
-    },
+    analyzeBottleneckHandler,
   );
 
   server.registerResource(
@@ -246,7 +284,13 @@ async function main(): Promise<void> {
   await mcp.connect(transport);
 }
 
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+const isDirectRun =
+  process.argv[1] !== undefined &&
+  (process.argv[1].endsWith("/index.js") || process.argv[1].endsWith("/index.ts"));
+
+if (isDirectRun) {
+  main().catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
+}

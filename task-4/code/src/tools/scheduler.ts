@@ -1,11 +1,11 @@
-import type { AirportConfig } from "./config.js";
+import type { AirportConfig } from "../config.js";
 import type {
   FlightRecord,
   ScheduledAssignment,
   ScheduledGateInterval,
   ScheduledRunwayInterval,
-} from "./domain.js";
-import { priorityRank } from "./domain.js";
+} from "../domain.js";
+import { priorityRank } from "../domain.js";
 
 function compareFlights(a: FlightRecord, b: FlightRecord): number {
   const pr = priorityRank(a.priority) - priorityRank(b.priority);

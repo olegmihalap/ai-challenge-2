@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { loadAirportConfig } from "./config.js";
-import type { AirportConfig } from "./config.js";
-import type { FlightRecord } from "./domain.js";
-import { buildSchedule } from "./scheduler.js";
-import { AirportState } from "./state.js";
+import { loadAirportConfig } from "../config.js";
+import type { AirportConfig } from "../config.js";
+import type { FlightRecord } from "../domain.js";
+import { buildSchedule } from "../tools/scheduler.js";
+import { AirportState } from "../tools/state.js";
 
 function sampleCfg(override: Partial<AirportConfig> = {}): AirportConfig {
   return {
@@ -123,6 +123,27 @@ describe("Scenario 1 — Morning Rush (priorities)", () => {
 });
 
 describe("Scenario 2 — Heavy Hauler", () => {
+  it("keeps an oversized departure unscheduled when runwayRequirement.minLength exceeds runways", () => {
+    const cfg = sampleCfg({ runwayLengthsM: [2500, 2700] });
+    const state = new AirportState(cfg);
+    state.submitFlight({
+      flightNumber: "WW900",
+      operationType: "departure",
+      priority: "high",
+      runwayRequirement: { minLength: 4000 },
+    });
+    state.submitFlight({
+      flightNumber: "WW901",
+      operationType: "arrival",
+      priority: "low",
+    });
+    const built = state.generateSchedule();
+    const heavy = state.listFlights().find((f) => f.flightNumber === "WW900")!;
+    const other = state.listFlights().find((f) => f.flightNumber === "WW901")!;
+    expect(built.unscheduled.get(heavy.id)?.reason).toBe("NO_SUITABLE_RUNWAY");
+    expect(built.assignments.has(other.id)).toBe(true);
+  });
+
   it("keeps an oversized departure unscheduled while scheduling others", () => {
     const cfg = sampleCfg({ runwayLengthsM: [2500, 2700] });
     const flights: FlightRecord[] = [
@@ -270,6 +291,21 @@ describe("Determinism", () => {
     state.generateSchedule();
     const f2 = state.getDeterminismFingerprint();
     expect(f1).toBe(f2);
+  });
+});
+
+describe("submit_flight runway requirement shape", () => {
+  it("accepts runwayRequirement.minLength and prefers it over minRunwayLengthM", () => {
+    const cfg = sampleCfg();
+    const state = new AirportState(cfg);
+    const { flight } = state.submitFlight({
+      flightNumber: "RH1",
+      operationType: "departure",
+      priority: "high",
+      runwayRequirement: { minLength: 3500 },
+      minRunwayLengthM: 100,
+    });
+    expect(flight.minRunwayLengthM).toBe(3500);
   });
 });
 

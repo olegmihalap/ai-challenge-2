@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { AirportConfig } from "./config.js";
+import type { AirportConfig } from "../config.js";
 import type {
   FlightRecord,
   OperationType,
@@ -8,7 +8,7 @@ import type {
   ScheduledGateInterval,
   ScheduledRunwayInterval,
   TimelineEntry,
-} from "./domain.js";
+} from "../domain.js";
 import { buildSchedule } from "./scheduler.js";
 import type { UnscheduledEntry } from "./scheduler.js";
 
@@ -46,6 +46,7 @@ export class AirportState {
     operationType: OperationType;
     priority: Priority;
     dependencies?: string[];
+    runwayRequirement?: { minLength: number };
     minRunwayLengthM?: number;
   }): { flightId: string; flight: FlightRecord } {
     const deps = (input.dependencies ?? []).slice().sort();
@@ -56,6 +57,11 @@ export class AirportState {
       }
     }
 
+    const minRunwayLengthM =
+      input.runwayRequirement !== undefined
+        ? input.runwayRequirement.minLength
+        : (input.minRunwayLengthM ?? 0);
+
     const id = randomUUID();
     const flight: FlightRecord = {
       id,
@@ -63,7 +69,7 @@ export class AirportState {
       operationType: input.operationType,
       priority: input.priority,
       dependencies: deps,
-      minRunwayLengthM: input.minRunwayLengthM ?? 0,
+      minRunwayLengthM,
       submissionOrder: this.submissionCounter++,
       cancelled: false,
     };

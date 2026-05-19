@@ -1,4 +1,4 @@
-import type { FlightRecord, ScheduledAssignment } from "./domain.js";
+import type { FlightRecord, ScheduledAssignment } from "../domain.js";
 
 export type BottleneckChainResult =
   | {
