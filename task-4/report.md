@@ -1,70 +1,31 @@
-# Task 4 Report — Airport ATC MCP
+## Scheduling approach and key decisions
 
-Implementation source and package: [`code/`](code/) (build with `npm run build` inside that directory).
+Scheduling happens in **one-minute steps**. The algorithm is **greedy**: it assigns flights one by one, instead of searching for a perfect overall solution.
 
-## Scheduling approach
+First, flights are ordered by **dependencies**. Circular dependencies are detected and marked as `CYCLIC_DEPENDENCY` (those flights cannot be placed). When more than one flight is ready at the same time, the scheduler chooses in this order: **higher priority**, then **earlier submission time**, then **flight id** (alphabetically).
 
-The scheduler is a **discrete-time greedy constructive algorithm** with **deterministic tie-breaking**:
+For each flight, it looks for the **earliest minute** that works. It tries runways and gates in a **fixed order** by index. That way, the same input always produces the same output (**deterministic** behaviour).
 
-1. **Cycle detection** — Dependency edges among active flights are scanned with Kahn topological sorting; nodes left with residual in-degree participate in cycles and are marked `CYCLIC_DEPENDENCY` without runway placement attempts.
-2. **Topological priority queue** — Remaining flights are processed when their dependencies are satisfied. Among ready flights, ordering is `(priority → submission order → lexicographic flight id)` so higher-priority flights claim earlier feasible slots when competing for the same resources.
-3. **Placement search** — For each flight, earliest legal **minute** `t` is scanned upward until `MAX_SCHEDULING_HORIZON_MINUTES`. For each candidate `(t, runway R, gate G)` (nested in ascending index order for determinism):
-   - **Arrival**: runway landing `[t, t+rw)`, gate `[t+rw, t+rw+gate)`.
-   - **Departure**: gate `[t, t+gate)`, runway takeoff `[t+gate, t+gate+rw)`.
-   where `rw` and `gate` come from the operation-duration env vars below.
-4. **Feasibility checks** — Same-runway consecutive movements enforce configured separation buffers (`takeoff→takeoff`, `landing→landing`, mixed). Gates enforce turnaround gaps. **Ground crew** is modeled as a **peak concurrent gate-occupancy cap**: at any minute, the number of overlapping gate intervals across all gates may not exceed `GROUND_CREW_COUNT` (validated with a sweep-line counter). This is not a per-stand crew roster; it limits how many flights can be on-gate simultaneously airport-wide.
-5. **Dependencies** — A dependent’s earliest start is `max(completion(dep) + DEPENDENCY_BUFFER_MINUTES)`. Completion is end of gate handling for arrivals and end of runway takeoff for departures.
+The scheduler checks **runway spacing** rules, **gate turnaround** gaps, and a simple **ground-crew limit**: across the whole airport, at most `GROUND_CREW_COUNT` flights may be on gates at the same minute (overlapping gate intervals). This is **not** a detailed model of teams at each stand. For dependencies, the child flight must wait until each parent finishes, plus `DEPENDENCY_BUFFER_MINUTES`. For arrivals, “finish” means the end of the gate segment; for departures, it means the end of the take-off segment.
 
-### Operation duration configuration
+How long runway and gate blocks last is controlled by environment variables with defaults. Details are in [`README.md`](README.md). When the user submits or cancels flights, **old assignments are removed immediately**, so MCP tools cannot show an outdated plan.
 
-Segment lengths use **optional** env overrides with code defaults (modeling assumptions not in `task.md`). Spec names are preferred; `ATC_*` names are backwards-compatible aliases. When unset:
+**Main limitation:** greedy search is straightforward and sufficiently fast here, but the schedule is **not guaranteed to be the best possible solution** overall.
 
-| Role | Spec name | Default (minutes) |
-|------|-----------|-------------------|
-| Arrival runway block | `ARRIVAL_RUNWAY_BLOCK_MINUTES` | 10 |
-| Departure runway block | `DEPARTURE_RUNWAY_BLOCK_MINUTES` | 10 |
-| Arrival gate block | `ARRIVAL_GATE_BLOCK_MINUTES` | 20 |
-| Departure gate block | `DEPARTURE_GATE_BLOCK_MINUTES` | 20 |
-
-Set any of these (or their `ATC_*` aliases) to tune scheduling segment lengths; values must be positive integers.
-
-See [`README.md`](README.md) for the full env table and example overrides.
-
-Strengths: predictable runtime for modest horizons, easy to reason about, deterministic across identical inputs. Weaknesses: not globally optimal (greedy), horizon scanning is \(O(\text{horizon} \cdot R \cdot G \cdot F)\) worst case—acceptable for challenge-sized queues.
-
-## Cancellation behavior
-
-Submitting or cancelling flights **invalidates** stored assignments immediately so tools/resources cannot surface a stale plan. Regeneration recomputes dependents against updated cancellations.
-
-## Bottleneck analysis
-
-On the active schedule graph restricted to **scheduled** flights, dynamic programming memoizes the best dependency chain ending at each node. The reported **`elapsedMinutes`** is the wall-clock span of that chain on the schedule:
-
-\[
-\text{elapsedMinutes} = \text{completion}(\text{last flight in chain}) - \text{start}(\text{first flight in chain})
-\]
-
-where **start** is the first scheduled segment start (runway start for arrivals, gate start for departures) and **completion** is the last segment end (gate end for arrivals, runway end for departures). Dependency buffers are reflected indirectly in scheduled start times, not added again in this formula. Tie-break uses lexicographic flight-id ordering for stability.
+To report bottlenecks, the code runs **dynamic programming** (a standard technique for chains on a graph) on scheduled flights only. The value **`elapsedMinutes`** is the real time from the start of the first flight in the longest chain to the end of the last flight in that chain.
 
 ## Tools and techniques
 
-- `ChatGPT Pro` to analyze task and generate prompts for Cursor
-- `Cursor` with subscription to generate code for MCP server
-- `@modelcontextprotocol/sdk` with `McpServer` + `StdioServerTransport`
-- `zod` for env + tool argument validation
-- `vitest` for regression scenarios described in the challenge brief
+| Tool or library | How it was used |
+|-----------------|-----------------|
+| ChatGPT Pro | Understanding the task and writing prompts |
+| Cursor | Writing the MCP server code |
+| `@modelcontextprotocol/sdk` | Building the MCP server and stdio transport |
+| `zod` | Checking environment variables and tool arguments |
+| `vitest` | Automated tests based on the challenge brief |
 
 ## What worked / what did not
 
-**Worked**
+**What worked well:** configuration through environment variables, checked when the server starts; clear error reasons (for example `NO_SUITABLE_RUNWAY`, cycles, time horizon); read-only tools that show the same data as the underlying JSON.
 
-- Environment-driven configuration with strict startup validation.
-- Explicit unschedule reasons (`NO_SUITABLE_RUNWAY`, cycle detection, horizon violations).
-- Resource-only inspection keeps AI clients aligned with ground truth JSON.
-
-**Trade-offs / limits**
-
-- Crew modeling is intentionally simple (peak concurrent gate intervals). Real ATC would separate ramp teams by stand category, tow teams, de-icing windows, etc.
-- No partial salvage scheduling trying to fit “maximum subset”—if a flight blocks itself, dependents fail predictably instead of reordering the entire MILP.
-
-Future improvement would be an optional **interval-graph** or **CP-SAT** backend behind the same MCP surface if schedule quality becomes critical.
+**What did not / limitations:** ground crew is only a **cap on simultaneous gate use**, not separate ramp teams per stand. The scheduler also does **not** try to keep as many flights as possible when some cannot be placed. If a flight cannot be scheduled, dependent flights fail in a simple, predictable way instead of running a heavy global optimization.
